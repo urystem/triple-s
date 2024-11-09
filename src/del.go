@@ -1,23 +1,15 @@
 package src
 
-import (
-	"net/http"
-	"os"
-)
+import "net/http"
 
 func DelBuc(w http.ResponseWriter, r *http.Request) {
 	if bucname := r.PathValue("Bucket"); bucname == "Buckets.csv" {
 		writeHttpError(w, http.StatusBadRequest, "Invalid bucketnme", "You cannot delete")
-	} else if mod, marketdel, e := writeTemp(Dir, bucname, "", "", true); e != nil {
+	} else if mod, markeddel, e := writeTemp(Dir, bucname, "", "", true); e != nil { // give to kernel func
 		writeHttpError(w, http.StatusInternalServerError, e.Error(), "Server dead")
-	} else if !mod {
-		if e = os.Remove(Dir + "/" + "Buckets.csv"); e != nil {
-			writeHttpError(w, http.StatusInternalServerError, e.Error(), "Cannot remove bucket temp metadata")
-		}
+	} else if !mod { // if not modified the metadata
 		writeHttpError(w, http.StatusNotFound, "Not found bucket", "Check the bucket name")
-	} else if e = temptocsv(Dir); e != nil {
-		writeHttpError(w, http.StatusInternalServerError, e.Error(), "Fatal ERROR")
-	} else if marketdel {
+	} else if markeddel { // modified to marked for deletion
 		writeHttpError(w, http.StatusInternalServerError, "bucket not empty", "bucket not empty")
 	} else if e = writeHttpMessage(w, []byte("<deletedBucket><name>"+bucname+"</name></deletedBucket>")); e != nil {
 		ErrPrint(e)
@@ -25,23 +17,16 @@ func DelBuc(w http.ResponseWriter, r *http.Request) {
 }
 
 func DelObj(w http.ResponseWriter, r *http.Request) {
-	if bucname, objname := r.PathValue("Bucket"), r.PathValue("Object"); objname == "objects.csv" {
+	if bucname, objname := r.PathValue("Bucket"), r.PathValue("Object"); objname == "objects.csv" { // check the metadata's name
 		writeHttpError(w, http.StatusBadRequest, "Invalid object name", "you cannot delete this object")
-	} else if moded, _, e := writeTemp(Dir+"/"+bucname, objname, "", "", true); e != nil {
-		writeHttpError(w, http.StatusInternalServerError, e.Error(), "Fatal ERROR deleting object object temp")
+	} else if moded, _, e := writeTemp(Dir+"/"+bucname, objname, "", "", true); e != nil { // delete entry of metadata
+		writeHttpError(w, http.StatusInternalServerError, e.Error(), "Error with following reason")
 	} else if !moded {
-		if e = os.Remove(Dir + "/" + bucname + "/" + "Objects.csv"); e != nil {
-			writeHttpError(w, http.StatusBadRequest, e.Error(), "Cannot remove object temp metadata")
-		}
-		writeHttpError(w, http.StatusBadRequest, "Not found object", "Check the object name")
-	} else if e = temptocsv(Dir + "/" + bucname); e != nil {
-		writeHttpError(w, http.StatusBadRequest, e.Error(), "temptocsv error")
-	} else if mod, _, e := writeTemp(Dir, bucname, "", "", false); e != nil {
+		writeHttpError(w, http.StatusBadRequest, "Not found object", "In metadata not found")
+	} else if mod, _, e := writeTemp(Dir, bucname, "", "", false); e != nil { // change the time of buckets.csv
 		writeHttpError(w, http.StatusInternalServerError, e.Error(), "Fatal ERROR deleting object buckets temp")
 	} else if !mod {
-		writeHttpError(w, http.StatusInternalServerError, "bucket not modifiyed", "Fatal ERROR deleting object buckets temp "+bucname+" not found")
-	} else if e = temptocsv(Dir); e != nil {
-		writeHttpError(w, http.StatusInternalServerError, e.Error(), "Fatal ERROR temp to original bucket")
+		writeHttpError(w, http.StatusInternalServerError, "bucket's time not modifiyed", "Fatal ERROR deleting object")
 	} else if e = writeHttpMessage(w, []byte("<deletedobject><name>"+objname+"</name><bucket>"+bucname+"</bucket></deletedobject>")); e != nil {
 		ErrPrint(e)
 	}

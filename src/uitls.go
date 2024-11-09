@@ -16,20 +16,6 @@ var (
 	objhead [4]string = [4]string{"ObjectKey", "Size", "ContentType", "LastModified"}
 )
 
-func writeHttpError(w http.ResponseWriter, code int, errorCode string, message string) {
-	w.Header().Set("Content-Type", "text/xml")
-	w.WriteHeader(code)
-	if _, e := w.Write([]byte("<error><code>" + errorCode + "</code><message>" + message + "</message></error>")); e != nil {
-		ErrPrint(e)
-	}
-}
-
-func writeHttpMessage(w http.ResponseWriter, by []byte) error {
-	w.Header().Set("Content-Type", "text/xml")
-	_, e := w.Write(by)
-	return e
-}
-
 func Help() {
 	os.Stdout.WriteString(`Simple Storage Service.
 **Usage:**
@@ -51,35 +37,46 @@ func ErrPrint(e error) {
 func Headchecker(r **csv.Reader, isBuc bool) error {
 	if first, e := (*r).Read(); e != nil {
 		return e
-	} else if ch := objhead; len(first) != 4 {
-		return errors.New("in csv file's struct wrong")
+	} else if ch, bucOrObj := objhead, "object"; len(first) != 4 {
+		return errors.New("in csv file's struct wrong len")
 	} else {
 		if isBuc {
-			ch = Buchead
+			ch, bucOrObj = Buchead, "bucket"
 		}
 		for i, v := range first {
-			if f := "object"; v != ch[i] {
-				if isBuc {
-					f = "bucket"
-				}
-				return errors.New(f + ".csv file changed")
+			if v != ch[i] {
+				return errors.New(bucOrObj + ".csv file changed")
 			}
 		}
 	}
 	return nil
 }
 
-func writeTemp(pathfile, bucOrObjname, size, con string, del bool) (bool, bool, error) { // 0 FOR BUCKET DELETING, 1 FOR UPDATE OBJECT, 2 DEL OBJ
+func writeHttpError(w http.ResponseWriter, code int, errorCode string, message string) {
+	w.Header().Set("Content-Type", "text/xml")
+	w.WriteHeader(code)
+	if _, e := w.Write([]byte("<error><code>" + errorCode + "</code><message>" + message + "</message></error>")); e != nil {
+		ErrPrint(e)
+	}
+}
+
+func writeHttpMessage(w http.ResponseWriter, by []byte) error {
+	w.Header().Set("Content-Type", "text/xml")
+	_, e := w.Write(by)
+	return e
+}
+
+func writeTemp(pathfile, bucOrObjname, size, con string, del bool) (bool, bool, error) { // univesal func, like a kernel of metadates)
 	filename, tfilename, header := "objects.csv", "Objects.csv", &objhead
 	if pathfile == Dir {
 		filename, tfilename, header = "buckets.csv", "Buckets.csv", &Buchead
 	}
-	tf, er := os.Create(pathfile + "/" + tfilename)
+	tf, er := os.Create(pathfile + "/" + tfilename) // creating temp
 	if er != nil {
 		return false, false, er
 	}
 	defer tf.Close()
-	fcsv, err := os.Open(pathfile + "/" + filename)
+	fcsv, err := os.Open(pathfile + "/" + filename) // open the original file only for reading
 	if err != nil {
 		return false, false, err
 	}
@@ -88,7 +85,7 @@ func writeTemp(pathfile, bucOrObjname, size, con string, del bool) (bool, bool, 
 	if e := Headchecker(&reader, pathfile == Dir); e != nil {
 		return false, false, e
 	}
-	if _, e := tf.WriteString(strings.Join((*header)[:], ",") + "\n"); e != nil {
+	if _, e := tf.WriteString(strings.Join((*header)[:], ",") + "\n"); e != nil { // write the header to temp
 		return false, false, e
 	}
 	var was, marketdel bool
@@ -105,55 +102,52 @@ func writeTemp(pathfile, bucOrObjname, size, con string, del bool) (bool, bool, 
 			was = true
 			if del {
 				if pathfile == Dir { // del bucket
-					if files, err := os.ReadDir(pathfile + "/" + bucOrObjname); err != nil {
+					if files, err := os.ReadDir(pathfile + "/" + bucOrObjname); err != nil { // this this fatal error
 						return false, false, err
 					} else if len(files) == 1 && files[0].Name() == "objects.csv" && !files[0].IsDir() { // if there only 1 file it is to removing
-						if err = os.RemoveAll(pathfile + "/" + bucOrObjname); err != nil {
+						if err = os.RemoveAll(pathfile + "/" + bucOrObjname); err != nil { // removeall, because in it is will be dir with metadata objects.csv
 							return false, false, err
 						}
-						continue
+						continue // skip write to the metadata, it is for the buckets.csv
 					} else {
-						marketdel, fls[3] = true, "Market for deleting"
+						marketdel, fls[3] = true, "Market for deleting" // if in the dir not only the metadata objects.csv, for this one the function return one bool
 					}
-				} else if e := os.Remove(pathfile + "/" + bucOrObjname); e != nil {
+				} else if e := os.Remove(pathfile + "/" + bucOrObjname); e != nil { // remove/delete the object file
 					return false, false, e
 				} else {
-					continue
+					continue // skip for not write to the metadata, it is will be on after object deleted
 				}
-			} else if pathfile == Dir {
-				if fls[3] == "Market for deleting" {
+			} else if pathfile == Dir { // not deletion and it is Dir
+				if fls[3] == "Market for deleting" { // Change to Active, because it is for update buckets.csv
 					fls[3] = "Active"
 				}
-				fls[2] = time.Now().Format("2006-01-02T15:04:05")
-			} else {
-				fls[1], fls[2], fls[3] = size, con, time.Now().Format("2006-01-02T15:04:05")
+				fls[2] = time.Now().Format("2006-01-02T15:04:05") // Update time for buckets.csv
+			} else { // Else that is for objects.csv
+				fls[1], fls[2], fls[3] = size, con, time.Now().Format("2006-01-02T15:04:05") // update object's metadates
 			}
 		}
-		if _, err := tf.WriteString(strings.Join(fls, ",") + "\n"); err != nil {
+		if _, err := tf.WriteString(strings.Join(fls, ",") + "\n"); err != nil { // writing updated or not updated lines to temp
 			return false, false, err
 		}
 	}
-	return was, marketdel, nil
-}
-
-func temptocsv(path string) error {
-	filename, tfilename := "objects.csv", "Objects.csv"
-	if path == Dir {
-		filename, tfilename = "buckets.csv", "Buckets.csv"
+	if !was { // if not modified then just remove the temp
+		return was, marketdel, os.Remove(pathfile + "/" + tfilename)
 	}
-	if er := os.Remove(path + "/" + filename); er != nil {
-		return er
-	}
-	return os.Rename(path+"/"+tfilename, path+"/"+filename)
+	return was, marketdel, func() error { // if modified then remove original and rename the temp to original
+		if er := os.Remove(pathfile + "/" + filename); er != nil {
+			return er
+		}
+		return os.Rename(pathfile+"/"+tfilename, pathfile+"/"+filename)
+	}()
 }
 
 func checkmeta(pathtofile string, isBuc bool) error {
-	if f, e := os.Open(pathtofile); e != nil {
+	if f, e := os.Open(pathtofile); e != nil { // open for reading only
 		return e
 	} else {
 		defer f.Close()
 		read := csv.NewReader(f)
-		if e := Headchecker(&read, isBuc); e != nil {
+		if e := Headchecker(&read, isBuc); e != nil { // check the header
 			return e
 		}
 		for {
@@ -167,18 +161,13 @@ func checkmeta(pathtofile string, isBuc bool) error {
 	}
 }
 
-func checkAndreturntype(path, objOrBucname string) (string, error) {
-	if path == Dir {
-		path += "/buckets.csv"
-	} else {
-		path += "/objects.csv"
-	}
-	if f, e := os.Open(path); e != nil {
+func checkHasAndreturntype(pathfile, objOrBucname string, isBuc bool) (string, error) {
+	if f, e := os.Open(pathfile); e != nil {
 		return "", e
 	} else {
 		defer f.Close()
 		read := csv.NewReader(f)
-		if e := Headchecker(&read, false); e != nil {
+		if e := Headchecker(&read, isBuc); e != nil {
 			return "", e
 		}
 		for {
@@ -187,9 +176,15 @@ func checkAndreturntype(path, objOrBucname string) (string, error) {
 			} else if er != nil {
 				return "", er
 			} else if fls[0] == objOrBucname {
-				return fls[2], nil
+				if isBuc { // if it is bucket, then must not been here
+					return "", errors.New("bucket already exits in metadata")
+				}
+				return fls[2], nil // if it's object, it is right, we need the content type only
 			}
 		}
-		return "", errors.New(objOrBucname + "not found")
+		if isBuc { // if bucket not found here, it is right, it for creating for new bucket
+			return "", nil
+		}
+		return "", errors.New(objOrBucname + "not found") // if object not here, it is error, contype not found
 	}
 }
