@@ -12,14 +12,14 @@ func DelBuc(w http.ResponseWriter, r *http.Request) {
 		writeHttpError(w, http.StatusInternalServerError, e.Error(), "Server dead")
 	} else if !mod {
 		if e = os.Remove(Dir + "/" + "Buckets.csv"); e != nil {
-			writeHttpError(w, http.StatusBadRequest, e.Error(), "Cannot remove bucket temp metadata")
+			writeHttpError(w, http.StatusInternalServerError, e.Error(), "Cannot remove bucket temp metadata")
 		}
-		writeHttpError(w, http.StatusBadRequest, "Not found bucket", "Check the bucket name")
+		writeHttpError(w, http.StatusNotFound, "Not found bucket", "Check the bucket name")
 	} else if e = temptocsv(Dir); e != nil {
 		writeHttpError(w, http.StatusInternalServerError, e.Error(), "Fatal ERROR")
 	} else if marketdel {
 		writeHttpError(w, http.StatusInternalServerError, "bucket not empty", "bucket not empty")
-	} else if e = writeHttpMessage(w, []byte("<deletedBucket>"+"<name>"+bucname+"</name>"+"</deletedBucket>")); e != nil {
+	} else if e = writeHttpMessage(w, []byte("<deletedBucket><name>"+bucname+"</name></deletedBucket>")); e != nil {
 		ErrPrint(e)
 	}
 }

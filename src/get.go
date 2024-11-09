@@ -2,7 +2,7 @@ package src
 
 import (
 	"encoding/csv"
-	"fmt"
+	"errors"
 	"io"
 	"net/http"
 	"os"
@@ -30,29 +30,26 @@ func GetBucets(w http.ResponseWriter, r *http.Request) {
 
 func GetBuc(w http.ResponseWriter, r *http.Request) {
 	bucname := r.PathValue("Bucket")
-	fmt.Println(bucname + "GETBUC")
-	if fn, e := os.Stat(Dir + "/" + bucname); e != nil {
+	if _, e := os.Stat(Dir + "/" + bucname); e != nil {
 		if os.IsNotExist(e) {
-			writeHttpError(w, http.StatusBadRequest, e.Error(), "not found bucket")
+			writeHttpError(w, http.StatusBadRequest, e.Error(), "bucket not found")
 		} else {
-			writeHttpError(w, http.StatusInternalServerError, e.Error(), "unknown error bucket")
+			writeHttpError(w, http.StatusInternalServerError, e.Error(), "unknown error")
 		}
-	} else if !fn.IsDir() {
-		writeHttpError(w, http.StatusInternalServerError, "it is file", "is not dir")
-	} else if e = checkmeta(Dir+"/"+bucname+"/"+"objects.csv", false); e != nil {
+	} else if e := checkmeta(Dir+"/"+bucname+"/"+"objects.csv", false); e != nil {
 		writeHttpError(w, http.StatusInternalServerError, e.Error(), "checking metadata")
-	} else if fn, e := os.Open(Dir + "/" + "buckets.csv"); e != nil {
+	} else if f, e := os.Open(Dir + "/" + bucname + "/" + "objects.csv"); e != nil {
 		writeHttpError(w, http.StatusInternalServerError, e.Error(), "opening metadata")
 	} else {
-		defer fn.Close()
-		read := csv.NewReader(fn)
+		defer f.Close()
+		read := csv.NewReader(f)
 		if e = Headchecker(&read, false); e != nil {
 			writeHttpError(w, http.StatusInternalServerError, e.Error(), "second check header")
-		} else if e = writeHttpMessage(w, []byte("<bucket><name>"+bucname+"</name>")); e != nil {
+		} else if e = writeHttpMessage(w, []byte("<objects>")); e != nil {
 			writeHttpError(w, http.StatusInternalServerError, e.Error(), "writing")
 		} else if e = getprinter(&read, w, false); e != nil {
 			ErrPrint(e)
-		} else if _, e = w.Write([]byte("</bucket>")); e != nil {
+		} else if _, e = w.Write([]byte("</objects>")); e != nil {
 			ErrPrint(e)
 		}
 	}
@@ -75,4 +72,50 @@ func getprinter(r **csv.Reader, w http.ResponseWriter, isBuc bool) error {
 		}
 	}
 	return nil
+}
+
+func GetObj(w http.ResponseWriter, r *http.Request) {
+	bucname, objname := r.PathValue("Bucket"), r.PathValue("Object")
+	if _, e := os.Stat(Dir + "/" + bucname); e != nil {
+		if os.IsNotExist(e) {
+			writeHttpError(w, http.StatusBadRequest, e.Error(), "bucket not found")
+		} else {
+			writeHttpError(w, http.StatusInternalServerError, e.Error(), "unknown error")
+		}
+	} else if _, e = os.Stat(Dir + "/" + bucname + "/" + objname); e != nil {
+		if os.IsNotExist(e) {
+			writeHttpError(w, http.StatusBadRequest, e.Error(), "n=")
+		} else {
+			writeHttpError(w, http.StatusInternalServerError, e.Error(), "unknown error")
+		}
+	} else if conty, err := func() (string, error) {
+		if f, e := os.Open(Dir + "/" + bucname + "/" + "objects.csv"); e != nil {
+			return "", e
+		} else {
+			defer f.Close()
+			read := csv.NewReader(f)
+			if e := Headchecker(&read, false); e != nil {
+				return "", e
+			}
+			for {
+				if fls, er := read.Read(); er == io.EOF {
+					break
+				} else if er != nil {
+					return "", er
+				} else if fls[0] == objname {
+					return fls[2], nil
+				}
+			}
+			return "", errors.New("bucket: " + bucname + " object: " + objname + "Object not found in metadata")
+		}
+	}(); err != nil {
+		writeHttpError(w, http.StatusInternalServerError, err.Error(), "metadata error")
+	} else if f, e := os.Open(Dir + "/" + bucname + "/" + objname); e != nil {
+		writeHttpError(w, http.StatusInternalServerError, e.Error(), "cannot open the object")
+	} else {
+		w.Header().Set("Content-Type", conty)
+		if _, e := io.Copy(w, f); e != nil {
+			writeHttpError(w, http.StatusInternalServerError, e.Error(), "w,f error")
+		}
+	}
 }

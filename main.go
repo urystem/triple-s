@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/csv"
 	"errors"
-	"fmt"
 	"net/http"
 	"os"
 	"strings"
@@ -15,7 +14,7 @@ func main() {
 	if len(os.Args) == 2 && os.Args[1] == "--help" {
 		src.Help()
 	} else if port, e := func() (string, error) { // fuction CheckAndSetFlags
-		if l := byte(len(os.Args)); l > 7 { // max len of args is 5
+		if l := byte(len(os.Args)); l > 5 { // max len of args is 5
 			return "", errors.New("too many args")
 		} else if l%2 == 0 { // even count args is invalid
 			return "", errors.New("invalid counts of args")
@@ -89,14 +88,14 @@ func main() {
 			}
 			f.Close()
 			mux := http.NewServeMux()
-			mux.HandleFunc("GET /{Bucket}", src.GetBuc)
-			mux.HandleFunc("GET /", src.GetBucets)
-			mux.HandleFunc("PUT /{Bucket}/{Object}", src.PutObj)
 			mux.HandleFunc("PUT /{Bucket}", src.Putbuc)
-			mux.HandleFunc("DELETE /{Bucket}/{Object}", src.DelObj)
+			mux.HandleFunc("PUT /{Bucket}/{Object}", src.PutObj)
 			mux.HandleFunc("DELETE /{Bucket}", src.DelBuc)
-			fmt.Println(port, src.Dir)
-			fmt.Println("Start Server")
+			mux.HandleFunc("DELETE /{Bucket}/{Object}", src.DelObj)
+			mux.HandleFunc("GET /{Bucket}/{Object}", src.GetObj)
+			mux.HandleFunc("GET /", src.GetBucets)
+			mux.HandleFunc("GET /{Bucket}/", src.GetBuc)
+			os.Stdout.WriteString("Port: " + port + "\tDir: " + src.Dir + "\nServer starting\n")
 			if e = http.ListenAndServe(port, mux); e != nil {
 				src.ErrPrint(e)
 			}

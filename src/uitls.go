@@ -17,7 +17,7 @@ var (
 )
 
 func writeHttpError(w http.ResponseWriter, code int, errorCode string, message string) {
-	w.Header().Set("Content-Type", "application/xml")
+	w.Header().Set("Content-Type", "text/xml")
 	w.WriteHeader(code)
 	if _, e := w.Write([]byte("<error><code>" + errorCode + "</code><message>" + message + "</message></error>")); e != nil {
 		ErrPrint(e)
@@ -58,7 +58,7 @@ func Headchecker(r **csv.Reader, isBuc bool) error {
 			ch = Buchead
 		}
 		for i, v := range first {
-			if f := "object"; strings.TrimSpace(v) != ch[i] {
+			if f := "object"; v != ch[i] {
 				if isBuc {
 					f = "bucket"
 				}
@@ -98,7 +98,7 @@ func writeTemp(pathfile, bucOrObjname, size, con string, del bool) (bool, bool, 
 			break
 		} else if er != nil {
 			return false, false, er
-		} else if strings.TrimSpace(fls[0]) == bucOrObjname { // for object.csv
+		} else if fls[0] == bucOrObjname { // for object.csv
 			if was {
 				return false, false, errors.New("repeated entry")
 			}
@@ -164,5 +164,32 @@ func checkmeta(pathtofile string, isBuc bool) error {
 			}
 		}
 		return nil
+	}
+}
+
+func checkAndreturntype(path, objOrBucname string) (string, error) {
+	if path == Dir {
+		path += "/buckets.csv"
+	} else {
+		path += "/objects.csv"
+	}
+	if f, e := os.Open(path); e != nil {
+		return "", e
+	} else {
+		defer f.Close()
+		read := csv.NewReader(f)
+		if e := Headchecker(&read, false); e != nil {
+			return "", e
+		}
+		for {
+			if fls, er := read.Read(); er == io.EOF {
+				break
+			} else if er != nil {
+				return "", er
+			} else if fls[0] == objOrBucname {
+				return fls[2], nil
+			}
+		}
+		return "", errors.New(objOrBucname + "not found")
 	}
 }

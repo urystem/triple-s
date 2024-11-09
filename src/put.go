@@ -39,7 +39,7 @@ func Putbuc(w http.ResponseWriter, r *http.Request) {
 					break
 				} else if er != nil {
 					return er
-				} else if strings.TrimSpace(b[0]) == bucname {
+				} else if b[0] == bucname {
 					return errors.New(bucname + " bucket already exist in metadata")
 				}
 			}
