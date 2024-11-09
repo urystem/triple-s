@@ -75,17 +75,11 @@ func main() {
 				if finfo, e := f.Stat(); e != nil { // get info about bucket.csv file
 					return e
 				} else if finfo.Size() == 0 { // if it is empty file or just created file, write []Buchead for first line
-					if _, e = f.WriteString(strings.Join(src.Buchead[:], ",") + "\n"); e != nil {
-						return e
-					}
-					os.Stdout.WriteString("metadata created\n")
-				} else {
-					r := csv.NewReader(f)
-					if e := src.Headchecker(&r, true); e != nil {
-						return e
-					}
+					_, e = f.WriteString(strings.Join(src.Buchead[:], ",") + "\n")
+					return e
 				}
-				return nil
+				r := csv.NewReader(f)
+				return src.Headchecker(&r, true)
 			}
 		}(); err != nil {
 			src.ErrPrint(err)
