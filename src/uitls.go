@@ -110,7 +110,7 @@ func writeTemp(pathfile, bucOrObjname, size, con string, del bool) (bool, bool, 
 						}
 						continue // skip write to the metadata, it is for the buckets.csv
 					} else {
-						marketdel, fls[3] = true, "Market for deleting" // if in the dir not only the metadata objects.csv, for this one the function return one bool
+						marketdel, fls[3] = true, "marked for deletion" // if in the dir not only the metadata objects.csv, for this one the function return one bool
 					}
 				} else if e := os.Remove(pathfile + "/" + bucOrObjname); e != nil { // remove/delete the object file
 					return false, false, e
