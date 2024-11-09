@@ -67,38 +67,40 @@ func main() {
 			src.ErrPrint(e)
 		} else if !ds.IsDir() { // if it's not dir, folder
 			src.ErrPrint(errors.New("it is not dir"))
-		} else if f, err := os.OpenFile(src.Dir+"/buckets.csv", os.O_CREATE|os.O_RDWR, 0o644); err != nil { // create or open bucket.csv file in this dir
-			src.ErrPrint(err)
-		} else {
-			if finfo, e := f.Stat(); e != nil { // get info about bucket.csv file
-				f.Close()
-				src.ErrPrint(e)
-			} else if finfo.Size() == 0 { // if it is empty file or just created file, write []Buchead for first line
-				if _, e = f.WriteString(strings.Join(src.Buchead[:], ",") + "\n"); e != nil {
-					f.Close()
-					src.ErrPrint(e)
-				}
-				os.Stdout.WriteString("metadata created\n")
+		} else if err := func() error {
+			if f, e := os.OpenFile(src.Dir+"/buckets.csv", os.O_CREATE|os.O_RDWR, 0o644); e != nil {
+				return e
 			} else {
-				r := csv.NewReader(f)
-				if e := src.Headchecker(&r, true); e != nil {
-					f.Close()
-					src.ErrPrint(e)
+				defer f.Close()
+				if finfo, e := f.Stat(); e != nil { // get info about bucket.csv file
+					return e
+				} else if finfo.Size() == 0 { // if it is empty file or just created file, write []Buchead for first line
+					if _, e = f.WriteString(strings.Join(src.Buchead[:], ",") + "\n"); e != nil {
+						return e
+					}
+					os.Stdout.WriteString("metadata created\n")
+				} else {
+					r := csv.NewReader(f)
+					if e := src.Headchecker(&r, true); e != nil {
+						return e
+					}
 				}
+				return nil
 			}
-			f.Close()
-			mux := http.NewServeMux()
-			mux.HandleFunc("PUT /{Bucket}", src.Putbuc)
-			mux.HandleFunc("PUT /{Bucket}/{Object}", src.PutObj)
-			mux.HandleFunc("DELETE /{Bucket}", src.DelBuc)
-			mux.HandleFunc("DELETE /{Bucket}/{Object}", src.DelObj)
-			mux.HandleFunc("GET /{Bucket}/{Object}", src.GetObj)
-			mux.HandleFunc("GET /", src.GetBucets)
-			mux.HandleFunc("GET /{Bucket}/", src.GetBuc)
-			os.Stdout.WriteString("Port: " + port + "\tDir: " + src.Dir + "\nServer starting\n")
-			if e = http.ListenAndServe(port, mux); e != nil {
-				src.ErrPrint(e)
-			}
+		}(); err != nil {
+			src.ErrPrint(err)
+		}
+		mux := http.NewServeMux()
+		mux.HandleFunc("PUT /{Bucket}", src.Putbuc)
+		mux.HandleFunc("PUT /{Bucket}/{Object}", src.PutObj)
+		mux.HandleFunc("DELETE /{Bucket}", src.DelBuc)
+		mux.HandleFunc("DELETE /{Bucket}/{Object}", src.DelObj)
+		mux.HandleFunc("GET /{Bucket}/{Object}", src.GetObj)
+		mux.HandleFunc("GET /", src.GetBucets)
+		mux.HandleFunc("GET /{Bucket}/", src.GetBuc)
+		os.Stdout.WriteString("Port: " + port + "\tDir: " + src.Dir + "\nServer starting\n")
+		if e = http.ListenAndServe(port, mux); e != nil {
+			src.ErrPrint(e)
 		}
 	}
 }
