@@ -11,20 +11,20 @@ import (
 
 func Putbuc(w http.ResponseWriter, r *http.Request) {
 	if bucname := r.PathValue("Bucket"); bucname == "Buckets.csv" { // check to the temp file
-		writeHttpError(w, http.StatusBadRequest, "Invalid bucketnme", "You cannot create with this name")
+		writeHttpError(w, http.StatusForbidden, "Invalid bucketnme", "You cannot create with this name")
 	} else if !regexp.MustCompile(`^[-.a-z\d]{3,63}$`).MatchString(bucname) || regexp.MustCompile(`^\d+.\d+.\d+.\d+$`).MatchString(bucname) || regexp.MustCompile("^[.-]").MatchString(bucname) ||
 		regexp.MustCompile("[.-]$").MatchString(bucname) || regexp.MustCompile(`\.\.`).MatchString(bucname) || regexp.MustCompile("--").MatchString(bucname) { // rex check
 		writeHttpError(w, http.StatusBadRequest, "invalid bucketname", "check the name of bucket")
 	} else if _, err := checkHasAndreturntype(Dir+"/buckets.csv", bucname, true); err != nil { // check existed before in the metadata
-		writeHttpError(w, http.StatusBadRequest, err.Error(), "found in metada with this name")
+		writeHttpError(w, http.StatusConflict, err.Error(), "found in metada with this name")
 	} else if e := os.Mkdir(Dir+"/"+bucname, 0o755); e != nil { // try mkdir with this name
 		if os.IsExist(e) {
 			writeHttpError(w, http.StatusConflict, e.Error(), "found in metadata: bucket already exist")
 		} else {
-			writeHttpError(w, http.StatusBadRequest, e.Error(), "uknown error: cannot create bucket")
+			writeHttpError(w, http.StatusInternalServerError, e.Error(), "uknown error: cannot create bucket")
 		}
 	} else if e = os.WriteFile(Dir+"/"+bucname+"/objects.csv", []byte(strings.Join(objhead[:], ",")+"\n"), 0o644); e != nil { // then into this bucket create file and write object header
-		writeHttpError(w, http.StatusBadRequest, e.Error(), "can't create metadata and write header")
+		writeHttpError(w, http.StatusInternalServerError, e.Error(), "can't create metadata and write header")
 	} else if f, e := os.OpenFile(Dir+"/buckets.csv", os.O_APPEND|os.O_WRONLY, 0o644); e != nil { // open to add the new bucket
 		writeHttpError(w, http.StatusInternalServerError, e.Error(), "cannot open the metadata to add thw the bucket")
 	} else {
@@ -41,10 +41,10 @@ func Putbuc(w http.ResponseWriter, r *http.Request) {
 func PutObj(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 	if bucname, objname := r.PathValue("Bucket"), r.PathValue("Object"); objname == "objects.csv" || objname == "Objects.csv" { // check the name for temp file
-		writeHttpError(w, http.StatusBadRequest, "Invalid objectname", "You cannot create object that name")
+		writeHttpError(w, http.StatusForbidden, "Invalid objectname", "You cannot create object that name")
 	} else if f, e := os.Stat(Dir + "/" + bucname); e != nil { // check the bucket exist or not
 		if os.IsNotExist(e) {
-			writeHttpError(w, http.StatusBadRequest, e.Error(), "There no that bucket")
+			writeHttpError(w, http.StatusNotFound, e.Error(), "There no that bucket")
 		} else {
 			writeHttpError(w, http.StatusInternalServerError, e.Error(), "unknown error with bucket")
 		}
