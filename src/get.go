@@ -18,7 +18,7 @@ func GetBucets(w http.ResponseWriter, r *http.Request) {
 		reader := csv.NewReader(f)
 		if e = Headchecker(&reader, true); e != nil {
 			writeHttpError(w, http.StatusInternalServerError, e.Error(), "Fatal error headbuc")
-		} else if _, e = w.Write([]byte(xmlheader + "<buckets>")); e != nil {
+		} else if e = writeHttpMessage(w, []byte("<buckets>")); e != nil {
 			writeHttpError(w, http.StatusInternalServerError, e.Error(), "Fatal error writing message")
 		} else if er := getprinter(&reader, w, true); er != nil {
 			ErrPrint(er)
@@ -48,7 +48,7 @@ func GetBuc(w http.ResponseWriter, r *http.Request) {
 		read := csv.NewReader(fn)
 		if e = Headchecker(&read, false); e != nil {
 			writeHttpError(w, http.StatusInternalServerError, e.Error(), "second check header")
-		} else if _, e = w.Write([]byte(xmlheader + "<bucket><name>" + bucname + "</name>")); e != nil {
+		} else if e = writeHttpMessage(w, []byte("<bucket><name>"+bucname+"</name>")); e != nil {
 			writeHttpError(w, http.StatusInternalServerError, e.Error(), "writing")
 		} else if e = getprinter(&read, w, false); e != nil {
 			ErrPrint(e)

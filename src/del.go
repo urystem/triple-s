@@ -19,8 +19,8 @@ func DelBuc(w http.ResponseWriter, r *http.Request) {
 		writeHttpError(w, http.StatusInternalServerError, e.Error(), "Fatal ERROR")
 	} else if marketdel {
 		writeHttpError(w, http.StatusInternalServerError, "bucket not empty", "bucket not empty")
-	} else if _, e = w.Write([]byte(xmlheader + "<deletedBucket>" + "<name>" + bucname + "</name>" + "</deletedBucket>")); e != nil {
-		writeHttpError(w, http.StatusBadGateway, e.Error(), "Fatality del")
+	} else if e = writeHttpMessage(w, []byte("<deletedBucket>"+"<name>"+bucname+"</name>"+"</deletedBucket>")); e != nil {
+		ErrPrint(e)
 	}
 }
 
@@ -42,7 +42,7 @@ func DelObj(w http.ResponseWriter, r *http.Request) {
 		writeHttpError(w, http.StatusInternalServerError, "bucket not modifiyed", "Fatal ERROR deleting object buckets temp "+bucname+" not found")
 	} else if e = temptocsv(Dir); e != nil {
 		writeHttpError(w, http.StatusInternalServerError, e.Error(), "Fatal ERROR temp to original bucket")
-	} else if _, e = w.Write([]byte(xmlheader + "<deletedobject>" + "<name>" + objname + "</name>" + "<bucket>" + bucname + "</bucket>" + "</deletedobject>")); e != nil {
-		writeHttpError(w, http.StatusBadGateway, e.Error(), "fatal error with message")
+	} else if e = writeHttpMessage(w, []byte("<deletedobject><name>"+objname+"</name><bucket>"+bucname+"</bucket></deletedobject>")); e != nil {
+		ErrPrint(e)
 	}
 }

@@ -48,7 +48,7 @@ func Putbuc(w http.ResponseWriter, r *http.Request) {
 			writeHttpError(w, http.StatusBadRequest, e.Error(), "Error metadata, from next request will be turn off the server")
 		} else if _, e := f.WriteString(bucname + "," + ntime + "," + ntime + ",Active\n"); e != nil {
 			writeHttpError(w, http.StatusInternalServerError, e.Error(), "cannot write metadata:  From next request will be turn of server")
-		} else if _, e = w.Write([]byte(xmlheader + "<bucketCreated><name>" + bucname + "</name>" + "<creationtime>" + ntime + "</creationtime>" + "</bucketCreated>")); e != nil {
+		} else if e = writeHttpMessage(w, []byte("<bucketCreated><name>"+bucname+"</name><creationtime>"+ntime+"</creationtime></bucketCreated>")); e != nil {
 			ErrPrint(e)
 		}
 	}
@@ -99,8 +99,8 @@ func PutObj(w http.ResponseWriter, r *http.Request) {
 				writeHttpError(w, http.StatusInternalServerError, "Metadata error", "not fuond in metadata bucket")
 			} else if e = temptocsv(Dir); e != nil {
 				writeHttpError(w, http.StatusInternalServerError, e.Error(), "Fatality temp to base bucket csv")
-			} else if _, e := w.Write([]byte(xmlheader + "<" + bucname + ">" + "<putobject>" + "<name>" + objname + "</name>" + "<size>" + consize + "</size>" +
-				"<type>" + contype + "</type>" + "<lastModified>" + ntime + "</lastModified>" + "</putobject>" + "</" + bucname + ">")); e != nil {
+			} else if e := writeHttpMessage(w, []byte("<"+bucname+">"+"<putobject><name>"+objname+"</name><size>"+
+				consize+"</size><type>"+contype+"</type><lastModified>"+ntime+"</lastModified></putobject></"+bucname+">")); e != nil {
 				ErrPrint(e)
 			}
 		}

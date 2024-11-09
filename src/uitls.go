@@ -11,10 +11,9 @@ import (
 )
 
 var (
-	Dir       string
-	Buchead   [4]string = [4]string{"Name", "CreationTime", "LastModifiedTime", "Status"}
-	objhead   [4]string = [4]string{"ObjectKey", "Size", "ContentType", "LastModified"}
-	xmlheader string    = "<?xml version=\"1.1\" encoding=\"UTF-8\"?>"
+	Dir     string
+	Buchead [4]string = [4]string{"Name", "CreationTime", "LastModifiedTime", "Status"}
+	objhead [4]string = [4]string{"ObjectKey", "Size", "ContentType", "LastModified"}
 )
 
 func writeHttpError(w http.ResponseWriter, code int, errorCode string, message string) {
@@ -25,9 +24,11 @@ func writeHttpError(w http.ResponseWriter, code int, errorCode string, message s
 	}
 }
 
-// func writeHttpmessage(w http.ResponseWriter, comma, message string) {
-// 	w.Write([]byte("<?xml version=\"1.1\" encoding=\"UTF-8\"?>\n" + "<message>" + message + "</message>"))
-// }
+func writeHttpMessage(w http.ResponseWriter, by []byte) error {
+	w.Header().Set("Content-Type", "text/xml")
+	_, e := w.Write(by)
+	return e
+}
 
 func Help() {
 	os.Stdout.WriteString(`Simple Storage Service.
@@ -142,10 +143,8 @@ func temptocsv(path string) error {
 	}
 	if er := os.Remove(path + "/" + filename); er != nil {
 		return er
-	} else if e := os.Rename(path+"/"+tfilename, path+"/"+filename); e != nil {
-		return e
 	}
-	return nil
+	return os.Rename(path+"/"+tfilename, path+"/"+filename)
 }
 
 func checkmeta(pathtofile string, isBuc bool) error {
