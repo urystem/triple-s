@@ -11,16 +11,16 @@ import (
 )
 
 var (
-	Dir        string
-	Buchead    [4]string = [4]string{"Name", "CreationTime", "LastModifiedTime", "Status"}
-	objhead    [4]string = [4]string{"ObjectKey", "Size", "ContentType", "LastModified"}
-	xmlheader  string    = "<?xml version=\"1.1\" encoding=\"UTF-8\"?>"
-	fatalError error
+	Dir       string
+	Buchead   [4]string = [4]string{"Name", "CreationTime", "LastModifiedTime", "Status"}
+	objhead   [4]string = [4]string{"ObjectKey", "Size", "ContentType", "LastModified"}
+	xmlheader string    = "<?xml version=\"1.1\" encoding=\"UTF-8\"?>"
 )
 
 func writeHttpError(w http.ResponseWriter, code int, errorCode string, message string) {
+	w.Header().Set("Content-Type", "application/xml")
 	w.WriteHeader(code)
-	if _, e := w.Write([]byte(xmlheader + "<error>\n\t<code>" + errorCode + "</code>\n\t<message>" + message + "</message>\n</error>")); e != nil {
+	if _, e := w.Write([]byte("<error><code>" + errorCode + "</code><message>" + message + "</message></error>")); e != nil {
 		ErrPrint(e)
 	}
 }
@@ -68,54 +68,54 @@ func Headchecker(r **csv.Reader, isBuc bool) error {
 	return nil
 }
 
-func writeTemp(pathfile, bucOrObjname, size, con string, del bool) (bool, error) { // 0 FOR BUCKET DELETING, 1 FOR UPDATE OBJECT, 2 DEL OBJ
+func writeTemp(pathfile, bucOrObjname, size, con string, del bool) (bool, bool, error) { // 0 FOR BUCKET DELETING, 1 FOR UPDATE OBJECT, 2 DEL OBJ
 	filename, tfilename, header := "objects.csv", "Objects.csv", &objhead
 	if pathfile == Dir {
 		filename, tfilename, header = "buckets.csv", "Buckets.csv", &Buchead
 	}
 	tf, er := os.Create(pathfile + "/" + tfilename)
 	if er != nil {
-		return false, er
+		return false, false, er
 	}
 	defer tf.Close()
-	fcsv, err := os.OpenFile(pathfile+"/"+filename, os.O_RDWR, 0o644)
+	fcsv, err := os.Open(pathfile + "/" + filename)
 	if err != nil {
-		return false, err
+		return false, false, err
 	}
 	defer fcsv.Close()
 	reader := csv.NewReader(fcsv)
 	if e := Headchecker(&reader, pathfile == Dir); e != nil {
-		return false, e
+		return false, false, e
 	}
 	if _, e := tf.WriteString(strings.Join((*header)[:], ",") + "\n"); e != nil {
-		return false, e
+		return false, false, e
 	}
-	var was bool
+	var was, marketdel bool
 	for {
 		fls, er := reader.Read()
 		if er == io.EOF {
 			break
 		} else if er != nil {
-			return false, er
+			return false, false, er
 		} else if strings.TrimSpace(fls[0]) == bucOrObjname { // for object.csv
 			if was {
-				return false, errors.New("repeated entry")
+				return false, false, errors.New("repeated entry")
 			}
 			was = true
 			if del {
 				if pathfile == Dir { // del bucket
 					if files, err := os.ReadDir(pathfile + "/" + bucOrObjname); err != nil {
-						return false, err
-					} else if len(files) == 1 && files[0].Name() == filename && !files[0].IsDir() { // if there only 1 file it is to removing
+						return false, false, err
+					} else if len(files) == 1 && files[0].Name() == "objects.csv" && !files[0].IsDir() { // if there only 1 file it is to removing
 						if err = os.RemoveAll(pathfile + "/" + bucOrObjname); err != nil {
-							return false, err
+							return false, false, err
 						}
 						continue
 					} else {
-						fls[3] = "Market for deleting"
+						marketdel, fls[3] = true, "Market for deleting"
 					}
 				} else if e := os.Remove(pathfile + "/" + bucOrObjname); e != nil {
-					return false, e
+					return false, false, e
 				} else {
 					continue
 				}
@@ -129,10 +129,10 @@ func writeTemp(pathfile, bucOrObjname, size, con string, del bool) (bool, error)
 			}
 		}
 		if _, err := tf.WriteString(strings.Join(fls, ",") + "\n"); err != nil {
-			return false, err
+			return false, false, err
 		}
 	}
-	return was, nil
+	return was, marketdel, nil
 }
 
 func temptocsv(path string) error {

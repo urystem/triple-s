@@ -4,7 +4,6 @@ import (
 	"encoding/csv"
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
 	"os"
 	"strings"
@@ -89,11 +88,6 @@ func main() {
 				}
 			}
 			f.Close()
-			// if entries, e := os.ReadDir(dir); e != nil {
-			// 	src.ErrPrint(e)
-			// } else if len(entries) != 1 {
-			// 	os.Stdout.WriteString("But in the this dir has another file(s) or directorie(s)\nBe carefully!")
-			// }
 			mux := http.NewServeMux()
 			mux.HandleFunc("GET /{Bucket}", src.GetBuc)
 			mux.HandleFunc("GET /", src.GetBucets)
@@ -107,71 +101,5 @@ func main() {
 				src.ErrPrint(e)
 			}
 		}
-	}
-}
-
-// checker first line
-
-// func for get method
-func gettri(w http.ResponseWriter, r *http.Request) {
-	u := r.URL.Path
-	fmt.Println(u, w)
-	fmt.Println("GET")
-}
-
-func putobj(w http.ResponseWriter, r *http.Request) {
-}
-
-func puttri(w http.ResponseWriter, r *http.Request) {
-	u := strings.Split(r.URL.Path, "/")
-	if len(u[0]) == 0 { // if first element empty del first one
-		u = u[1:]
-	}
-	if len(u[len(u)-1]) == 0 { // if last elemet empty del last one
-		u = u[:len(u)-1]
-	}
-	switch len(u) {
-	case 2:
-		if f, e := os.Stat(src.Dir + "/" + u[0]); e != nil {
-			http.Error(w, "", http.StatusInternalServerError)
-		} else if !f.IsDir() {
-			http.Error(w, "", http.StatusInternalServerError)
-		} else if f, e := os.Create(src.Dir + "/" + u[0] + "/" + u[1]); e != nil {
-			http.Error(w, e.Error(), http.StatusInternalServerError)
-		} else {
-			defer r.Body.Close()
-			if b, e := io.ReadAll(r.Body); e != nil {
-				http.Error(w, e.Error(), http.StatusBadRequest)
-			} else {
-				if _, e := f.Write(b); e != nil {
-					http.Error(w, e.Error(), http.StatusBadRequest)
-				}
-				f.Close()
-			}
-		}
-	default:
-		http.Error(w, "404 Not Found: The requested location is not allowed", http.StatusNotFound)
-	}
-}
-
-// func for del method
-func deltri(w http.ResponseWriter, r *http.Request) {
-	u := r.URL.Path
-	b := r.Body
-	fmt.Println(b, w)
-	fmt.Println(u)
-}
-
-// func hadle and check methods and give each method func
-func handls(w http.ResponseWriter, r *http.Request) {
-	switch r.Method {
-	case "GET":
-		gettri(w, r)
-	case "PUT":
-		puttri(w, r)
-	case "DELETE":
-		deltri(w, r)
-	default:
-		http.Error(w, r.Method+" method not allowed", http.StatusMethodNotAllowed)
 	}
 }

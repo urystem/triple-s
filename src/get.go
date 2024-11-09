@@ -13,16 +13,13 @@ func GetBucets(w http.ResponseWriter, r *http.Request) {
 		writeHttpError(w, http.StatusInternalServerError, e.Error(), "Error with metadata")
 	} else if f, e := os.Open(Dir + "/" + "buckets.csv"); e != nil {
 		writeHttpError(w, http.StatusInternalServerError, e.Error(), "Error with metadata")
-		fatalError = e
 	} else {
 		defer f.Close()
 		reader := csv.NewReader(f)
 		if e = Headchecker(&reader, true); e != nil {
 			writeHttpError(w, http.StatusInternalServerError, e.Error(), "Fatal error headbuc")
-			fatalError = e
 		} else if _, e = w.Write([]byte(xmlheader + "<buckets>")); e != nil {
 			writeHttpError(w, http.StatusInternalServerError, e.Error(), "Fatal error writing message")
-			fatalError = e
 		} else if er := getprinter(&reader, w, true); er != nil {
 			ErrPrint(er)
 		} else if _, e = w.Write([]byte("</buckets>")); e != nil {
@@ -33,32 +30,26 @@ func GetBucets(w http.ResponseWriter, r *http.Request) {
 
 func GetBuc(w http.ResponseWriter, r *http.Request) {
 	bucname := r.PathValue("Bucket")
-	fmt.Println(bucname)
+	fmt.Println(bucname + "GETBUC")
 	if fn, e := os.Stat(Dir + "/" + bucname); e != nil {
 		if os.IsNotExist(e) {
 			writeHttpError(w, http.StatusBadRequest, e.Error(), "not found bucket")
 		} else {
 			writeHttpError(w, http.StatusInternalServerError, e.Error(), "unknown error bucket")
-			fatalError = e
 		}
 	} else if !fn.IsDir() {
 		writeHttpError(w, http.StatusInternalServerError, "it is file", "is not dir")
-		fatalError = e
 	} else if e = checkmeta(Dir+"/"+bucname+"/"+"objects.csv", false); e != nil {
 		writeHttpError(w, http.StatusInternalServerError, e.Error(), "checking metadata")
-		fatalError = e
 	} else if fn, e := os.Open(Dir + "/" + "buckets.csv"); e != nil {
 		writeHttpError(w, http.StatusInternalServerError, e.Error(), "opening metadata")
-		fatalError = e
 	} else {
 		defer fn.Close()
 		read := csv.NewReader(fn)
 		if e = Headchecker(&read, false); e != nil {
 			writeHttpError(w, http.StatusInternalServerError, e.Error(), "second check header")
-			fatalError = e
 		} else if _, e = w.Write([]byte(xmlheader + "<bucket><name>" + bucname + "</name>")); e != nil {
 			writeHttpError(w, http.StatusInternalServerError, e.Error(), "writing")
-			fatalError = e
 		} else if e = getprinter(&read, w, false); e != nil {
 			ErrPrint(e)
 		} else if _, e = w.Write([]byte("</bucket>")); e != nil {
