@@ -16,21 +16,8 @@ var (
 	objhead [4]string = [4]string{"ObjectKey", "Size", "ContentType", "LastModified"}
 )
 
-func Help() {
-	os.Stdout.WriteString(`Simple Storage Service.
-**Usage:**
-	triple-s [-port <N>] [-dir <S>]
-	triple-s --help
-
-**Options:**
-- --help     Show this screen.
-- --port N   Port number (default is 8080).
-- --dir S    Path to the directory (default is to the 'data' directory).` + "\n")
-}
-
 func ErrPrint(e error) {
 	os.Stdout.WriteString(e.Error() + "\n\n")
-	Help()
 	os.Exit(1)
 }
 
@@ -118,7 +105,7 @@ func writeTemp(pathfile, bucOrObjname, size, con string, del bool) (bool, bool, 
 					continue // skip for not write to the metadata, it is will be on after object deleted
 				}
 			} else if pathfile == Dir { // not deletion and it is Dir
-				if fls[3] == "Market for deleting" { // Change to Active, because it is for update buckets.csv
+				if fls[3] == "marked for deletion" { // Change to Active, because it is for update buckets.csv
 					fls[3] = "Active"
 				}
 				fls[2] = time.Now().Format("2006-01-02T15:04:05") // Update time for buckets.csv
