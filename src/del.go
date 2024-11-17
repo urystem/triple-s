@@ -11,7 +11,7 @@ func DelBuc(w http.ResponseWriter, r *http.Request) {
 		writeHttpError(w, http.StatusNotFound, "Not found bucket", "Check the bucket name")
 	} else if markeddel { // modified to marked for deletion
 		writeHttpError(w, http.StatusLocked, "bucket not empty", "bucket not empty")
-	} else if e = writeHttpMessage(w, []byte("<deletedBucket><name>"+bucname+"</name></deletedBucket>")); e != nil {
+	} else if e = writeHttpMessage(w, http.StatusNoContent, []byte("<deletedBucket><name>"+bucname+"</name></deletedBucket>")); e != nil {
 		ErrPrint(e)
 	}
 }
@@ -27,7 +27,7 @@ func DelObj(w http.ResponseWriter, r *http.Request) {
 		writeHttpError(w, http.StatusInternalServerError, e.Error(), "Fatal ERROR deleting object buckets temp")
 	} else if !mod {
 		writeHttpError(w, http.StatusInternalServerError, "bucket's time not modifiyed", "Fatal ERROR deleting object")
-	} else if e = writeHttpMessage(w, []byte("<deletedobject><name>"+objname+"</name><bucket>"+bucname+"</bucket></deletedobject>")); e != nil {
+	} else if e = writeHttpMessage(w, http.StatusNoContent, []byte("<deletedobject><name>"+objname+"</name><bucket>"+bucname+"</bucket></deletedobject>")); e != nil {
 		ErrPrint(e)
 	}
 }

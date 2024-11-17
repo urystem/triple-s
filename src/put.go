@@ -32,7 +32,7 @@ func Putbuc(w http.ResponseWriter, r *http.Request) {
 		ntime := time.Now().Format("2006-01-02T15:04:05")
 		if _, e := f.WriteString(bucname + "," + ntime + "," + ntime + ",Active\n"); e != nil { // add the new bucket
 			writeHttpError(w, http.StatusInternalServerError, e.Error(), "cannot add the bucket to metadata")
-		} else if e = writeHttpMessage(w, []byte("<bucketCreated><name>"+bucname+"</name><creationtime>"+ntime+"</creationtime></bucketCreated>")); e != nil { // message
+		} else if e = writeHttpMessage(w, http.StatusCreated, []byte("<bucketCreated><name>"+bucname+"</name><creationtime>"+ntime+"</creationtime></bucketCreated>")); e != nil { // message
 			ErrPrint(e)
 		}
 	}
@@ -79,7 +79,7 @@ func PutObj(w http.ResponseWriter, r *http.Request) {
 				writeHttpError(w, http.StatusInternalServerError, er.Error(), "error with updating the metadata")
 			} else if !mod { // it is for buckets.csv, so this one must modified the last time
 				writeHttpError(w, http.StatusInternalServerError, "Metadata error", "not found in metadata bucket")
-			} else if e := writeHttpMessage(w, []byte("<"+bucname+">"+"<putobject><name>"+objname+"</name><size>"+
+			} else if e := writeHttpMessage(w, http.StatusCreated, []byte("<"+bucname+">"+"<putobject><name>"+objname+"</name><size>"+
 				consize+"</size><type>"+contype+"</type><lastModified>"+ntime+"</lastModified></putobject></"+bucname+">")); e != nil {
 				ErrPrint(e)
 			}

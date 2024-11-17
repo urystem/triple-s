@@ -47,7 +47,8 @@ func writeHttpError(w http.ResponseWriter, code int, errorCode string, message s
 	}
 }
 
-func writeHttpMessage(w http.ResponseWriter, by []byte) error {
+func writeHttpMessage(w http.ResponseWriter, code int, by []byte) error {
+	w.WriteHeader(code)
 	w.Header().Set("Content-Type", "text/xml")
 	_, e := w.Write(by)
 	return e
