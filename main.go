@@ -48,17 +48,16 @@ func main() {
 		}
 	}(); err != nil {
 		src.ErrPrint(err)
-	}
-	mux := http.NewServeMux()
-	mux.HandleFunc("PUT /{Bucket}", src.Putbuc)
-	mux.HandleFunc("PUT /{Bucket}/{Object}", src.PutObj)
-	mux.HandleFunc("DELETE /{Bucket}", src.DelBuc)
-	mux.HandleFunc("DELETE /{Bucket}/{Object}", src.DelObj)
-	mux.HandleFunc("GET /{Bucket}/{Object}", src.GetObj)
-	mux.HandleFunc("GET /", src.GetBucets)
-	mux.HandleFunc("GET /{Bucket}/", src.GetBuc)
-	os.Stdout.WriteString("Port: " + *port + "\tDir: " + src.Dir + "\nServer starting\n")
-	if e := http.ListenAndServe(":"+*port, mux); e != nil {
-		src.ErrPrint(e)
+	} else {
+		mux := http.NewServeMux()
+		mux.HandleFunc("PUT /{Bucket}", src.Putbuc)
+		mux.HandleFunc("PUT /{Bucket}/{Object}", src.PutObj)
+		mux.HandleFunc("DELETE /{Bucket}", src.DelBuc)
+		mux.HandleFunc("DELETE /{Bucket}/{Object}", src.DelObj)
+		mux.HandleFunc("GET /{Bucket}/{Object}", src.GetObj)
+		mux.HandleFunc("GET /", src.GetBucets)
+		mux.HandleFunc("GET /{Bucket}/", src.GetBuc)
+		os.Stdout.WriteString("Port: " + *port + "\tDir: " + src.Dir + "\nServer starting\n")
+		src.ErrPrint(http.ListenAndServe(":"+*port, mux))
 	}
 }
